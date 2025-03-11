@@ -1,0 +1,176 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String      @id @default(cuid())
+  name          String?
+  email         String?     @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?     // Campo para armazenar a senha criptografada
+  planId        String      @default("free")
+  stripeCustomerId String?
+  subscriptionId   String?
+  accounts      Account[]
+  sessions      Session[]
+  settings      UserSettings?
+  usageLimit    UsageLimit?
+  prompts       Prompt[]
+  images        Image[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model UserSettings {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme         String   @default("light")
+  language      String   @default("pt")
+  notifications Boolean  @default(true)
+  defaultModel  String   @default("gpt4")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model UsageLimit {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  promptLimit   Int      @default(100)
+  imageLimit    Int      @default(50)
+  promptsUsed   Int      @default(0)
+  imagesUsed    Int      @default(0)
+  resetDate     DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Prompt {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  promptPt    String
+  promptEn    String
+  category    String
+  tags        String   @default("")
+  images      Image[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Image {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  promptId  String
+  prompt    Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  imageUrl  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Template {
+  id            String    @id @default(cuid())
+  name          String
+  description   String
+  content       String
+  variables     String[]
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  category      String
+  isPublic      Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model PromptVersao {
+  id        String   @id @default(uuid())
+  promptPt  String
+  promptEn  String
+  imageUrl  String?
+  prompt    Prompt   @relation(fields: [promptId], references: [id])
+  promptId  String
+  createdAt DateTime @default(now())
+}
+
+model Categoria {
+  id          String   @id @default(uuid())
+  nome        String   @unique
+  descricao   String?
+  prompts     Prompt[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Tag {
+  id        String   @id @default(uuid())
+  nome      String   @unique
+  prompts   Prompt[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Analytics {
+  id            String   @id @default(uuid())
+  prompt        Prompt   @relation(fields: [promptId], references: [id])
+  promptId      String   @unique
+  visualizacoes Int      @default(0)
+  usos          Int      @default(0)
+  avaliacoes    Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
